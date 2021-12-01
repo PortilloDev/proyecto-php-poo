@@ -1,0 +1,189 @@
+Instalar curl
+
+sudo apt install php-curl
+
+Levantar servidor
+
+php -S localhost:8000 server.php
+
+en otra terminal nos conectamos con el comando
+
+## GET 
+curl http://localhost:8000/books -v
+
+## POST
+
+curl -H "Content-Type: application/json" -X POST -d "{ \"titulo\":\"Nuevo Libro\",\"id_autor\": 1,\"genero\": 2}" http://localhost:8000/books
+
+## PUT
+curl -H "Content-Type: application/json" -X PUT -d "{ \"titulo\":\"El Hobbit\",\"id_autor\": 3,\"genero\": 2}" http://localhost:8000/books/1
+
+## DELETE
+curl -H "Content-Type: application/json" -X DELETE  http://localhost:8000/books/1
+
+
+Autentificación por http
+$user = array_key_exists('PHP_AUTH_USER', $_SERVER) ? $_SERVER['PHP_AUTH_USER'] : '';
+$pwd = array_key_exists('PHP_AUTH_PW', $_SERVER) ? $_SERVER['PHP_AUTH_PW'] : '';
+
+if ( $user !== 'ivan' || $pwd !== '1234' ) {
+	header('Status-Code: 403');
+
+	echo json_encode(
+		[ 
+			'error' => "Usuario y/o password incorrectos", 
+		]
+	);
+
+	die;
+}
+
+Autenticación con HMAC
+
+if( 
+    !array_key_exists('HTTP_X_HASH', $_SERVER) ||
+    !array_key_exists('HTTP_X_TIMESTAMP', $_SERVER) ||
+    !array_key_exists('HTTP_X_UID', $_SERVER) 
+) {
+    header('Status-Code: 403');
+	echo json_encode([ 'error' => "No autorizado - información ausente en el encabezado", ]);
+	die;
+}
+
+list( $hash, $uid, $timestamp ) = [ $_SERVER['HTTP_X_HASH'], $_SERVER['HTTP_X_UID'], $_SERVER['HTTP_X_TIMESTAMP'] ];
+$secret = 'Sh!! No se lo cuentes a nadie!';
+$newHash = sha1($uid.$timestamp.$secret);
+
+
+if ( $newHash !== $hash) {
+    header('Status-Code: 403');
+	echo json_encode([ 'error' => "No autorizado - claves no coincidentes", ]);
+	die;
+}
+
+
+para generar las claves usar el script generate_hash.php
+
+curl http://localhost:8000/books -H "X-HASH: 9b35a926ebff503beca7b157b210a1ca5ad54c9f" -H "X-UID: 1" -H "X-TIMESTAMP: 1638313170"
+
+Autenticación por token
+Los tokens de acceso se utilizan en la autenticación basada en tokens para permitir que una aplicación acceda a una API. La aplicación recibe un token de acceso después de que un usuario autentica y autoriza el acceso con éxito, luego pasa el token de acceso como una credencial cuando llama a la API de destino. El token pasado informa a la API que el portador del token ha sido autorizado para acceder a la API y realizar acciones específicas especificadas por el alcance otorgado durante la autorización.
+
+
+Está forma es la más compleja de todas, pero también es la forma más segura utilizada para información muy sensible. El servidor al que le van a hacer las consultas se va a partir en dos:
+
+Uno se va a encargar específicamente de la autenticación.
+El otro se va a encargar de desplegar los recursos de la API.
+El flujo de la petición es la siguiente:
+
+Nuestro usuario hace una petición al servidor de autenticación para pedir un token.
+El servidor le devuelve el token.
+El usuario hace una petición al servidor para pedir recursos de la API.
+El servidor con los recursos hace una petición al servidor de autenticación para verificar que el token sea válido.
+Una vez verificado el token, el servidor le devuelve los recursos al cliente.
+
+crear token
+curl http://localhost:8001 -X POST -H "X-Client-Id:1" -H "X-Secret:secret!"
+
+autentificarme
+curl http://localhost:8000/books -H "X-Token: "
+
+
+Manejo de errores de un servicio REST
+
+De momento nuestra API no nos indica que haya ocurrido un error, solamente nos regresa un código 200 de HTTP que significa que la petición se realizó sin problemas.
+
+Para mejorar nuestra API añadiremos respuestas con los códigos HTTP más comunes:
+
+400 Bad Request: indica que el servidor no puede o no procesa la petición debido a algo que es percibido como un error del cliente
+404 Not Found: el servidor no encuentra el recurso solicitado.
+500 Internal Server Error: la petición no pudo procesarse por un error del servidor.
+
+1xx: Respuestas informativas
+2xx: Peticiones correctas
+3xx: Redirecciones
+4xx: Errores del cliente
+5xx: Errores del servidor
+Los más comunes:
+400 Bad Request: Error en la petición.
+401 Unauthorized: Falta iniciar sesión.
+403 Forbidden: No se poseeen los permisos necesarios.
+404 Not Found: No se ha podido encontrar el recurso.
+500 Internal Server error: Usualmente fallo en la aplicación web.
+502 Bad Gateway: Error entre la comunicación del servidor web y alguno de los servidores que actúan de proxy.
+503 Service Unavailable: Servidor está caido por mantenimiento o está sobrecargado.
+504 Gateway Timeout: El servidor actúa como puerta de enlace y no puede obtener una respuesta a tiempo.
+
+
+Comunicación entre cliente y servidor
+Es muy común tener comunicaciones con API REST al momento de tener una aplicación de una sola página o SPA, ya sea para obtener o guardar datos. Esta comunicación se realiza a través de AJAX, Asynchronous JavaScript XML. la clave es la parte de asincronismo pues el cliente no se queda bloqueado.
+
+buenas prácticas:
+
+Siempre utiliza sustantivos para nombrar tus recursos.
+Añade los nombres en plural para las urls.
+Las modificaciones a recursos deben hacerse con su verbo HTTP correspondiente: POST, PUT o DELETE.
+Para devolver recursos asociados a otro recurso utiliza url que incorporen subrecursos: /Autos/1/Choferes.
+Navegabilidad vía vínculos.
+Cuando devuelvas colecciones deben ser filtrables, ordenables y paginables.
+Versiona tu API, añade el número de versión en la url: v1/Autos.
+No olvides tomar el examen para evaluar tus conocimientos y dejar una review del curso.
+
+En POO una API son todos los elemento públicos que están disponibles.
+
+Conocer conceptos principales de Rest
+¿Qué es y cómo funciona el protocolo HTTP?
+HTTP: Hytpertext Transfer Protocol, conjunto de reglas en las que se van a comunicar dos entidades.
+
+Protocolo: conjunto de reglas.
+
+¿Qué significa Rest?
+REST: Representational State Transfer o bien transferencia de estado representacional.
+
+API RESTful es una API diseñada con los conceptos de REST.
+
+Recurso: todo dentro de una Api RESTFul debe ser un recurso.
+URI: Todos los recursos se manipulan a partir de una URL (Identificadores Universales de Recursos).
+Acction: todas las peticiones de un Api Rest debe de estar asociado con un verbo HTTP:
+Get: para obtener recursos.
+Post: para escribir un recurso.
+Put: Para editar un recurso.
+Delete: para eliminar un recurso.
+Métodos de autenticación
+HTTP
+Mediante HTTP auth user, debe de ir en el encabezado authorization.
+HMAC
+HMAC: (Hash Message Authorizarion Code) para lo cual se necesita 3 elementos, Basado en Hash de Mensajes:
+Función hash: Difícil de romper y que sea conocida por el cliente y el servidor.
+Clave Secreta: para corroborar el HASH
+UID: Id de usuario será utilizado dentro del HASH junto con la clave secreta y el timestamp
+Es mucho más seguro que la autenticación vía HTTP.
+
+Acceso mediante Tokens
+Roles del servidores:
+
+Uno se encarga de la autenticación.
+Otro se encarga de desplegar los recursos del API.
+Flujo.
+
+Petición para la solicitud de Token
+El servidor devuelve token
+El usuario hace una petición para pedir recurso.
+El servidor con los recursos hace una petición al servidor de autenticación para verificar token sea valido.
+Una vez verificado el token, el servidor devuelve los recursos al cliente.
+Manejo de Errores en servicio REST
+Para las respuestas con error se utilizaran los siguientes códigos: en los encabezados HTTP.
+
+400: Bad Request, que el servidor no puede procesar la petición.
+404: Not Found, el servidor no encuentra el recurso buscado.
+500 Invernal Error Server, la petición no se pudo procesar por un error en el servidor.
+Buenas prácticas
+Utilizar sustantivos para nombrar los recursos.
+Añadir los nombres en plural para las URLs
+Las modificaciones se deben de hacer con su verbo HTTP correspondiente.
+Para devolver recursos asociados se debe incorporar sub-recursos
+autos/1/choferes
+Navegabilida vía vínculos
+Cuando devuelva colecciones deben de ser filtrables, ordenables y paginables.
+Versionar las api
+v1/autos/1/choferes
